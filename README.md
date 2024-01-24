@@ -1,1 +1,1 @@
-# curly-umbrella
+# NVIM Setup
