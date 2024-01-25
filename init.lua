@@ -20,12 +20,6 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
--- [[ Configure plugins ]]
--- NOTE: Here is where you install your plugins.
---  You can configure plugins using the `config` key.
---
---  You can also configure plugins after the setup call,
---    as they will be available in your neovim runtime.
 require('lazy').setup({
   -- Git helper
   'tpope/vim-fugitive',
@@ -35,29 +29,23 @@ require('lazy').setup({
   -- Detect tabstop and shiftwidth automatically
   'tpope/vim-sleuth',
 
-  -- NOTE: This is where your plugins related to LSP can be installed.
-  --  The configuration is done below. Search for lspconfig to find it below.
+  -- LSP Configuration & Plugins
   {
-    -- LSP Configuration & Plugins
     'neovim/nvim-lspconfig',
     dependencies = {
-      --   -- Automatically install LSPs to stdpath for neovim
-      --   { 'williamboman/mason.nvim', config = true },
-      --   'williamboman/mason-lspconfig.nvim',
-      --
-      --   -- Useful status updates for LSP
-      --   -- NOTE: `opts = {}` is the same as calling `require('fidget').setup({})`
+      -- Useful status updates for LSP
+      -- NOTE: `opts = {}` is the same as calling `require('fidget').setup({})`
       { 'j-hui/fidget.nvim', opts = {} },
-      --
-      --   -- Additional lua configuration, makes nvim stuff amazing!
+
+      -- Additional lua configuration, makes nvim stuff amazing!
       'folke/neodev.nvim',
     },
   },
   'simrat39/rust-tools.nvim',
 
 
+  -- Autocompletion
   {
-    -- Autocompletion
     'hrsh7th/nvim-cmp',
     dependencies = {
       -- Snippet Engine written in Lua
@@ -77,8 +65,9 @@ require('lazy').setup({
 
   -- Useful plugin to show you pending keybinds.
   { 'folke/which-key.nvim',  opts = {} },
+
+  -- Adds git related signs to the gutter, as well as utilities for managing changes
   {
-    -- Adds git related signs to the gutter, as well as utilities for managing changes
     'lewis6991/gitsigns.nvim',
     opts = {
       -- See `:help gitsigns.txt`
@@ -152,8 +141,8 @@ require('lazy').setup({
     },
   },
 
+  -- Theme inspired by Atom
   {
-    -- Theme inspired by Atom
     'navarasu/onedark.nvim',
     priority = 1000,
     config = function()
@@ -161,8 +150,8 @@ require('lazy').setup({
     end,
   },
 
+  -- Set lualine as statusline
   {
-    -- Set lualine as statusline
     'nvim-lualine/lualine.nvim',
     -- See `:help lualine.txt`
     opts = {
@@ -175,8 +164,8 @@ require('lazy').setup({
     },
   },
 
+  -- Add indentation guides even on blank lines
   {
-    -- Add indentation guides even on blank lines
     'lukas-reineke/indent-blankline.nvim',
     -- Enable `lukas-reineke/indent-blankline.nvim`
     -- See `:help ibl`
@@ -208,8 +197,8 @@ require('lazy').setup({
     },
   },
 
+  -- Highlight, edit, and navigate code
   {
-    -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
     dependencies = {
       'nvim-treesitter/nvim-treesitter-textobjects',
@@ -528,6 +517,7 @@ local lspconfig = require('lspconfig')
 local capabilities = vim.lsp.protocol.make_client_capabilities()
 capabilities = require('cmp_nvim_lsp').default_capabilities(capabilities)
 
+-- LSP for lua specifically for neovim
 lspconfig.lua_ls.setup {
   on_init = function(client)
     local path = client.workspace_folders[1].name
@@ -559,6 +549,7 @@ lspconfig.lua_ls.setup {
   end
 }
 
+-- LSP for Rust with full rust-analyzer features i.e. inlay hints
 local rust_tools = require("rust-tools")
 rust_tools.setup({
   server = {
@@ -566,75 +557,9 @@ rust_tools.setup({
   }
 })
 
---[[
-lspconfig.rust_analyzer.setup {
-  capabilities = capabilities,
-  on_attach = on_attach,
-  cmd = {
-    "rustup", "run", "stable", "rust-analyzer",
-  },
-  settings = {
-    ["rust-analyzer"] = {
-      inlayHints = true,
-    },
-  },
-}
-]]
---
-
--- mason-lspconfig requires that these setup functions are called in this order
--- before setting up the servers.
--- require('mason').setup()
--- require('mason-lspconfig').setup()
-
--- Enable the following language servers
---  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
---
---  Add any additional override configuration in the following tables. They will be passed to
---  the `settings` field of the server config. You must look up that documentation yourself.
---
---  If you want to override the default filetypes that your language server will attach to you can
---  define the property 'filetypes' to the map in question.
--- local servers = {
--- clangd = {},
--- gopls = {},
--- pyright = {},
--- tsserver = {},
--- html = { filetypes = { 'html', 'twig', 'hbs'} },
-
---   lua_ls = {
---     Lua = {
---       workspace = { checkThirdParty = false },
---       telemetry = { enable = false },
---       -- NOTE: toggle below to ignore Lua_LS's noisy `missing-fields` warnings
---       -- diagnostics = { disable = { 'missing-fields' } },
---     },
---   },
---   rust_analyzer = {},
--- }
---
 -- Setup neovim lua configuration
 require('neodev').setup()
 
-
--- Ensure the servers above are installed
--- local mason_lspconfig = require 'mason-lspconfig'
-
--- mason_lspconfig.setup {
---   ensure_installed = vim.tbl_keys(servers),
--- }
---
--- mason_lspconfig.setup_handlers {
---   function(server_name)
---     require('lspconfig')[server_name].setup {
---       capabilities = capabilities,
---       on_attach = on_attach,
---       settings = servers[server_name],
---       filetypes = (servers[server_name] or {}).filetypes,
---     }
---   end,
--- }
---
 -- [[ Configure nvim-cmp ]]
 -- See `:help cmp`
 local cmp = require 'cmp'
