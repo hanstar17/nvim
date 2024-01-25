@@ -27,8 +27,6 @@ vim.opt.rtp:prepend(lazypath)
 --  You can also configure plugins after the setup call,
 --    as they will be available in your neovim runtime.
 require('lazy').setup({
-  -- NOTE: First, some plugins that don't require any configuration
-
   -- Git helper
   'tpope/vim-fugitive',
   -- Github helper
@@ -43,18 +41,20 @@ require('lazy').setup({
     -- LSP Configuration & Plugins
     'neovim/nvim-lspconfig',
     dependencies = {
-      -- Automatically install LSPs to stdpath for neovim
-      { 'williamboman/mason.nvim', config = true },
-      'williamboman/mason-lspconfig.nvim',
-
-      -- Useful status updates for LSP
-      -- NOTE: `opts = {}` is the same as calling `require('fidget').setup({})`
+      --   -- Automatically install LSPs to stdpath for neovim
+      --   { 'williamboman/mason.nvim', config = true },
+      --   'williamboman/mason-lspconfig.nvim',
+      --
+      --   -- Useful status updates for LSP
+      --   -- NOTE: `opts = {}` is the same as calling `require('fidget').setup({})`
       { 'j-hui/fidget.nvim', opts = {} },
-
-      -- Additional lua configuration, makes nvim stuff amazing!
+      --
+      --   -- Additional lua configuration, makes nvim stuff amazing!
       'folke/neodev.nvim',
     },
   },
+  'simrat39/rust-tools.nvim',
+
 
   {
     -- Autocompletion
@@ -76,7 +76,7 @@ require('lazy').setup({
   },
 
   -- Useful plugin to show you pending keybinds.
-  { 'folke/which-key.nvim', opts = {} },
+  { 'folke/which-key.nvim',  opts = {} },
   {
     -- Adds git related signs to the gutter, as well as utilities for managing changes
     'lewis6991/gitsigns.nvim',
@@ -300,6 +300,17 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   pattern = '*',
 })
 
+local autoformat_group = vim.api.nvim_create_augroup('Autoformat', { clear = true })
+vim.api.nvim_create_autocmd('BufWritePre', {
+  callback = function()
+    vim.lsp.buf.format()
+  end,
+  group = autoformat_group,
+  pattern = '*',
+})
+
+
+
 -- [[ Configure Telescope ]]
 -- See `:help telescope` and `:help telescope.setup()`
 require('telescope').setup {
@@ -457,16 +468,10 @@ end, 0)
 -- [[ Configure LSP ]]
 --  This function gets run when an LSP connects to a particular buffer.
 local on_attach = function(_, bufnr)
-  -- NOTE: Remember that lua is a real programming language, and as such it is possible
-  -- to define small helper and utility functions so you don't have to repeat yourself
-  -- many times.
-  --
-  -- In this case, we create a function that lets us more easily define mappings specific
-  -- for LSP related items. It sets the mode, buffer and description for us each time.
   local nmap = function(keys, func, desc)
-    if desc then
-      desc = 'LSP: ' .. desc
-    end
+    -- if desc then
+    --   desc = 'LSP: ' .. desc
+    -- end
 
     vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc })
   end
@@ -517,10 +522,70 @@ require('which-key').register({
   ['<leader>h'] = { 'Git [H]unk' },
 }, { mode = 'v' })
 
+local lspconfig = require('lspconfig')
+
+-- nvim-cmp supports additional completion capabilities, so broadcast that to servers
+local capabilities = vim.lsp.protocol.make_client_capabilities()
+capabilities = require('cmp_nvim_lsp').default_capabilities(capabilities)
+
+lspconfig.lua_ls.setup {
+  on_init = function(client)
+    local path = client.workspace_folders[1].name
+    if not vim.loop.fs_stat(path .. '/.luarc.json') and not vim.loop.fs_stat(path .. '/.luarc.jsonc') then
+      client.config.settings = vim.tbl_deep_extend('force', client.config.settings, {
+        Lua = {
+          runtime = {
+            -- Tell the language server which version of Lua you're using
+            -- (most likely LuaJIT in the case of Neovim)
+            version = 'LuaJIT'
+          },
+          -- Make the server aware of Neovim runtime files
+          workspace = {
+            checkThirdParty = false,
+            library = {
+              vim.env.VIMRUNTIME
+              -- "${3rd}/luv/library"
+              -- "${3rd}/busted/library",
+            }
+            -- or pull in all of 'runtimepath'. NOTE: this is a lot slower
+            -- library = vim.api.nvim_get_runtime_file("", true)
+          }
+        }
+      })
+
+      client.notify("workspace/didChangeConfiguration", { settings = client.config.settings })
+    end
+    return true
+  end
+}
+
+local rust_tools = require("rust-tools")
+rust_tools.setup({
+  server = {
+    on_attach = on_attach,
+  }
+})
+
+--[[
+lspconfig.rust_analyzer.setup {
+  capabilities = capabilities,
+  on_attach = on_attach,
+  cmd = {
+    "rustup", "run", "stable", "rust-analyzer",
+  },
+  settings = {
+    ["rust-analyzer"] = {
+      inlayHints = true,
+    },
+  },
+}
+]]
+--
+
 -- mason-lspconfig requires that these setup functions are called in this order
 -- before setting up the servers.
-require('mason').setup()
-require('mason-lspconfig').setup()
+-- require('mason').setup()
+-- require('mason-lspconfig').setup()
 
 -- Enable the following language servers
 --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
@@ -530,49 +595,46 @@ require('mason-lspconfig').setup()
 --
 --  If you want to override the default filetypes that your language server will attach to you can
 --  define the property 'filetypes' to the map in question.
-local servers = {
-  -- clangd = {},
-  -- gopls = {},
-  -- pyright = {},
-  -- tsserver = {},
-  -- html = { filetypes = { 'html', 'twig', 'hbs'} },
+-- local servers = {
+-- clangd = {},
+-- gopls = {},
+-- pyright = {},
+-- tsserver = {},
+-- html = { filetypes = { 'html', 'twig', 'hbs'} },
 
-  lua_ls = {
-    Lua = {
-      workspace = { checkThirdParty = false },
-      telemetry = { enable = false },
-      -- NOTE: toggle below to ignore Lua_LS's noisy `missing-fields` warnings
-      -- diagnostics = { disable = { 'missing-fields' } },
-    },
-  },
-  rust_analyzer = {},
-}
-
+--   lua_ls = {
+--     Lua = {
+--       workspace = { checkThirdParty = false },
+--       telemetry = { enable = false },
+--       -- NOTE: toggle below to ignore Lua_LS's noisy `missing-fields` warnings
+--       -- diagnostics = { disable = { 'missing-fields' } },
+--     },
+--   },
+--   rust_analyzer = {},
+-- }
+--
 -- Setup neovim lua configuration
 require('neodev').setup()
 
--- nvim-cmp supports additional completion capabilities, so broadcast that to servers
-local capabilities = vim.lsp.protocol.make_client_capabilities()
-capabilities = require('cmp_nvim_lsp').default_capabilities(capabilities)
 
 -- Ensure the servers above are installed
-local mason_lspconfig = require 'mason-lspconfig'
+-- local mason_lspconfig = require 'mason-lspconfig'
 
-mason_lspconfig.setup {
-  ensure_installed = vim.tbl_keys(servers),
-}
-
-mason_lspconfig.setup_handlers {
-  function(server_name)
-    require('lspconfig')[server_name].setup {
-      capabilities = capabilities,
-      on_attach = on_attach,
-      settings = servers[server_name],
-      filetypes = (servers[server_name] or {}).filetypes,
-    }
-  end,
-}
-
+-- mason_lspconfig.setup {
+--   ensure_installed = vim.tbl_keys(servers),
+-- }
+--
+-- mason_lspconfig.setup_handlers {
+--   function(server_name)
+--     require('lspconfig')[server_name].setup {
+--       capabilities = capabilities,
+--       on_attach = on_attach,
+--       settings = servers[server_name],
+--       filetypes = (servers[server_name] or {}).filetypes,
+--     }
+--   end,
+-- }
+--
 -- [[ Configure nvim-cmp ]]
 -- See `:help cmp`
 local cmp = require 'cmp'
