@@ -1,4 +1,10 @@
 # Neovim Config
 
-## Notes
-- Terminal on Mac doesn't support much colors and have an issue displaying colorful scheme. Use other terminal emulators such as Kitty.
+## Dependencies
+### Ripgrep 
+Ripgrep is used by Telescope's Live Grep (live search in all files).
+
+https://github.com/BurntSushi/ripgrep
+
+### Terminal
+Use any terminal emulator that supports True-color, such as Alacritty.
